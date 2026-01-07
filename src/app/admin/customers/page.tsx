@@ -1,13 +1,12 @@
 "use client";
 
-"use client";
-
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Card,
   CardContent,
   CardHeader,
   CardFooter,
+  CardTitle,
 } from "@/components/ui/card";
 import {
   Loader2Icon,
