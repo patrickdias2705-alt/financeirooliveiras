@@ -245,7 +245,7 @@ export default function Products() {
       }
       return product.name.toLowerCase().includes(searchTerm.toLowerCase());
     });
-  }, [products, filters.category, filters.inStock, searchTerm]);
+  }, [products, filters.category, filters.inStock, searchTerm, categories]);
 
   const indexOfLastProduct = currentPage * productsPerPage;
   const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
