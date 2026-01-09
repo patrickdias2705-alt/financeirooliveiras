@@ -53,6 +53,17 @@ export async function login(formData: FormData) {
     }
 
   if (authData?.user) {
+    // Atualizar último login na tabela user_profiles
+    try {
+      await supabase
+        .from('user_profiles')
+        .update({ last_login: new Date().toISOString() })
+        .eq('id', authData.user.id)
+    } catch (error) {
+      // Ignora erro se a tabela não existir ainda ou se o perfil não existir
+      console.log('Erro ao atualizar last_login:', error)
+    }
+    
     revalidatePath('/admin', 'layout')
     redirect('/admin')
   } else {
@@ -86,6 +97,26 @@ export async function signup(formData: FormData) {
 
   // Se signup foi bem-sucedido
   if (authData?.user) {
+    // Criar perfil do usuário na tabela user_profiles
+    try {
+      const name = data.email.split('@')[0] // Usa parte do email como nome padrão
+      await supabase
+        .from('user_profiles')
+        .insert({
+          id: authData.user.id,
+          email: data.email,
+          name: name,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          status: 'active',
+          role: 'user'
+        })
+    } catch (profileError: any) {
+      // Se o perfil já existe ou erro de RLS, apenas loga o erro
+      console.log('Erro ao criar perfil (pode ser normal se já existe):', profileError)
+      // Não bloqueia o cadastro se houver erro ao criar perfil
+    }
+    
     revalidatePath('/admin', 'layout')
     redirect('/admin')
   } else {
