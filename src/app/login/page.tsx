@@ -8,9 +8,9 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 
-export default function LoginPage() {
+function LoginForm() {
   const searchParams = useSearchParams()
   const error = searchParams.get('error')
   const [errorMessage, setErrorMessage] = useState<string | null>(error)
@@ -65,5 +65,25 @@ export default function LoginPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen flex-col items-center justify-center p-4 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+        <div className="mx-auto w-full max-w-md space-y-8">
+          <div className="flex flex-col items-center space-y-4">
+            <Logo className="mb-4" />
+            <h2 className="text-2xl font-bold text-white">Bem-vindo de volta</h2>
+            <p className="text-amber-400/90">
+              Carregando...
+            </p>
+          </div>
+        </div>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }
