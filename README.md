@@ -33,8 +33,8 @@ Sistema completo de gestão financeira e ponto de venda desenvolvido com Next.js
 
 1. Clone o repositório:
 ```bash
-git clone https://github.com/seu-usuario/seu-repo.git
-cd pos-system
+git clone https://github.com/patrickdias2705-alt/financeirooliveiras.git
+cd financeirooliveiras
 ```
 
 2. Instale as dependências:
