@@ -221,33 +221,24 @@ DROP POLICY IF EXISTS "Users can view their own installments" ON installments;
 DROP POLICY IF EXISTS "Users can update their own installments" ON installments;
 DROP POLICY IF EXISTS "Users can create their own installments" ON installments;
 -- Usar order_id para verificar através de orders (mais seguro e não depende de user_uid)
--- Fazer cast apropriado dependendo do tipo de user_uid
+-- Converter auth.uid() para text para comparar com user_uid VARCHAR
 CREATE POLICY "Users can view their own installments" ON installments 
     FOR SELECT USING (EXISTS (
         SELECT 1 FROM orders 
         WHERE orders.id = installments.order_id 
-        AND (
-            (orders.user_uid::text = auth.uid()::text) 
-            OR (orders.user_uid::uuid = auth.uid())
-        )
+        AND orders.user_uid::text = auth.uid()::text
     ));
 CREATE POLICY "Users can update their own installments" ON installments 
     FOR UPDATE USING (EXISTS (
         SELECT 1 FROM orders 
         WHERE orders.id = installments.order_id 
-        AND (
-            (orders.user_uid::text = auth.uid()::text) 
-            OR (orders.user_uid::uuid = auth.uid())
-        )
+        AND orders.user_uid::text = auth.uid()::text
     ));
 CREATE POLICY "Users can create their own installments" ON installments 
     FOR INSERT WITH CHECK (EXISTS (
         SELECT 1 FROM orders 
         WHERE orders.id = installments.order_id 
-        AND (
-            (orders.user_uid::text = auth.uid()::text) 
-            OR (orders.user_uid::uuid = auth.uid())
-        )
+        AND orders.user_uid::text = auth.uid()::text
     ));
 
 -- Expense Installments
@@ -256,33 +247,24 @@ DROP POLICY IF EXISTS "Users can view their own expense installments" ON expense
 DROP POLICY IF EXISTS "Users can update their own expense installments" ON expense_installments;
 DROP POLICY IF EXISTS "Users can create their own expense installments" ON expense_installments;
 -- Usar transaction_id para verificar através de transactions (mais seguro e não depende de user_uid)
--- Fazer cast apropriado dependendo do tipo de user_uid
+-- Converter auth.uid() para text para comparar com user_uid VARCHAR
 CREATE POLICY "Users can view their own expense installments" ON expense_installments 
     FOR SELECT USING (EXISTS (
         SELECT 1 FROM transactions 
         WHERE transactions.id = expense_installments.transaction_id 
-        AND (
-            (transactions.user_uid::text = auth.uid()::text) 
-            OR (transactions.user_uid::uuid = auth.uid())
-        )
+        AND transactions.user_uid::text = auth.uid()::text
     ));
 CREATE POLICY "Users can update their own expense installments" ON expense_installments 
     FOR UPDATE USING (EXISTS (
         SELECT 1 FROM transactions 
         WHERE transactions.id = expense_installments.transaction_id 
-        AND (
-            (transactions.user_uid::text = auth.uid()::text) 
-            OR (transactions.user_uid::uuid = auth.uid())
-        )
+        AND transactions.user_uid::text = auth.uid()::text
     ));
 CREATE POLICY "Users can create their own expense installments" ON expense_installments 
     FOR INSERT WITH CHECK (EXISTS (
         SELECT 1 FROM transactions 
         WHERE transactions.id = expense_installments.transaction_id 
-        AND (
-            (transactions.user_uid::text = auth.uid()::text) 
-            OR (transactions.user_uid::uuid = auth.uid())
-        )
+        AND transactions.user_uid::text = auth.uid()::text
     ));
 
 -- Categories
