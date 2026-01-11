@@ -104,12 +104,16 @@ export default function Products() {
 
   const handleAddProduct = useCallback(async () => {
     try {
+      // Encontrar o nome da categoria pelo ID
+      const selectedCategory = categories.find(c => c.id.toString() === productCategory);
+      const categoryName = selectedCategory ? selectedCategory.name : productCategory;
+      
       const newProduct = {
         name: productName,
         description: productDescription,
         price: productPrice,
         in_stock: productInStock,
-        category: productCategory,
+        category: categoryName,
       };
       const response = await fetch("/api/products", {
         method: "POST",
@@ -124,24 +128,36 @@ export default function Products() {
         setProducts([...products, addedProduct]);
         setIsAddProductDialogOpen(false);
         resetSelectedProduct();
+        // Recarregar produtos para garantir sincronização
+        const refreshResponse = await fetch("/api/products");
+        if (refreshResponse.ok) {
+          const refreshedProducts = await refreshResponse.json();
+          setProducts(refreshedProducts);
+        }
       } else {
-        console.error("Failed to add product");
+        const errorData = await response.json();
+        console.error("Failed to add product:", errorData);
+        alert(`Erro ao adicionar produto: ${errorData.error || 'Erro desconhecido'}`);
       }
     } catch (error) {
       console.error("Error adding product:", error);
+      alert("Erro ao adicionar produto. Tente novamente.");
     }
-  }, [productName, productDescription, productPrice, productInStock, productCategory, products]);
+  }, [productName, productDescription, productPrice, productInStock, productCategory, products, categories]);
 
   const handleEditProduct = useCallback(async () => {
     if (!selectedProductId) return;
     try {
+      // Encontrar o nome da categoria pelo ID
+      const selectedCategory = categories.find(c => c.id.toString() === productCategory);
+      const categoryName = selectedCategory ? selectedCategory.name : productCategory;
+      
       const updatedProduct = {
-        id: selectedProductId,
         name: productName,
         description: productDescription,
         price: productPrice,
         in_stock: productInStock,
-        category: productCategory,
+        category: categoryName,
       };
       const response = await fetch(`/api/products/${selectedProductId}`, {
         method: "PUT",
@@ -158,13 +174,22 @@ export default function Products() {
         );
         setIsEditProductDialogOpen(false);
         resetSelectedProduct();
+        // Recarregar produtos para garantir sincronização
+        const refreshResponse = await fetch("/api/products");
+        if (refreshResponse.ok) {
+          const refreshedProducts = await refreshResponse.json();
+          setProducts(refreshedProducts);
+        }
       } else {
-        console.error("Failed to update product");
+        const errorData = await response.json();
+        console.error("Failed to update product:", errorData);
+        alert(`Erro ao atualizar produto: ${errorData.error || 'Erro desconhecido'}`);
       }
     } catch (error) {
       console.error("Error updating product:", error);
+      alert("Erro ao atualizar produto. Tente novamente.");
     }
-  }, [selectedProductId, productName, productDescription, productPrice, productInStock, productCategory, products]);
+  }, [selectedProductId, productName, productDescription, productPrice, productInStock, productCategory, products, categories]);
 
   const handleDeleteProduct = useCallback(async () => {
     if (!productToDelete) return;
@@ -389,13 +414,17 @@ export default function Products() {
                         <Button
                           size="icon"
                           variant="ghost"
-                          onClick={() => {
+                          onClick={async () => {
                             setSelectedProductId(product.id);
                             setProductName(product.name);
-                            setProductDescription(product.description);
+                            setProductDescription(product.description || '');
                             setProductPrice(product.price);
                             setProductInStock(product.in_stock);
-                            setProductCategory(product.category);
+                            // Encontrar a categoria pelo nome ou ID
+                            const categoryMatch = categories.find(c => 
+                              c.name === product.category || c.id.toString() === product.category
+                            );
+                            setProductCategory(categoryMatch ? categoryMatch.id.toString() : product.category || '');
                             setIsEditProductDialogOpen(true);
                           }}
                         >

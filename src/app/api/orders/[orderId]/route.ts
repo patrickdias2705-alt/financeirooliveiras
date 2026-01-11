@@ -16,9 +16,12 @@ export async function PUT(
   const updatedOrder = await request.json();
   const orderId = params.orderId;
 
+  // Remover id do objeto se existir, pois não deve ser atualizado
+  const { id, ...orderData } = updatedOrder;
+
   const { data, error } = await supabase
     .from('orders')
-    .update({ ...updatedOrder, user_uid: user.id })
+    .update({ ...orderData, user_uid: user.id })
     .eq('id', orderId)
     .eq('user_uid', user.id)
     .select('*, customer:customers(name)')

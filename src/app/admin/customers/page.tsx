@@ -231,10 +231,15 @@ export default function CustomersPage() {
 
   const handleAddCustomer = useCallback(async () => {
     try {
+      if (!newCustomerName.trim() || !newCustomerEmail.trim()) {
+        alert("Por favor, preencha pelo menos o nome e email do cliente.");
+        return;
+      }
+
       const newCustomer = {
-        name: newCustomerName,
-        email: newCustomerEmail,
-        phone: newCustomerPhone,
+        name: newCustomerName.trim(),
+        email: newCustomerEmail.trim(),
+        phone: newCustomerPhone.trim() || null,
         status: newCustomerStatus,
       };
       const response = await fetch("/api/customers", {
@@ -246,15 +251,23 @@ export default function CustomersPage() {
       });
 
       if (!response.ok) {
-        throw new Error("Error creating customer");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Error creating customer");
       }
 
       const createdCustomer = await response.json();
-      setCustomers([...customers, createdCustomer]);
+      setCustomers([createdCustomer, ...customers]);
       setShowNewCustomerDialog(false);
       resetSelectedCustomer();
-    } catch (error) {
+      // Recarregar clientes para garantir sincronização
+      const refreshResponse = await fetch("/api/customers");
+      if (refreshResponse.ok) {
+        const refreshedCustomers = await refreshResponse.json();
+        setCustomers(refreshedCustomers);
+      }
+    } catch (error: any) {
       console.error(error);
+      alert(`Erro ao adicionar cliente: ${error.message || 'Erro desconhecido'}`);
     }
   }, [
     newCustomerName,
@@ -267,11 +280,15 @@ export default function CustomersPage() {
   const handleEditCustomer = useCallback(async () => {
     if (!selectedCustomerId) return;
     try {
+      if (!newCustomerName.trim() || !newCustomerEmail.trim()) {
+        alert("Por favor, preencha pelo menos o nome e email do cliente.");
+        return;
+      }
+
       const updatedCustomer = {
-        id: selectedCustomerId,
-        name: newCustomerName,
-        email: newCustomerEmail,
-        phone: newCustomerPhone,
+        name: newCustomerName.trim(),
+        email: newCustomerEmail.trim(),
+        phone: newCustomerPhone.trim() || null,
         status: newCustomerStatus,
       };
       const response = await fetch(`/api/customers/${selectedCustomerId}`, {
@@ -283,7 +300,8 @@ export default function CustomersPage() {
       });
 
       if (!response.ok) {
-        throw new Error("Error updating customer");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Error updating customer");
       }
 
       const updatedCustomerData = await response.json();
@@ -294,8 +312,15 @@ export default function CustomersPage() {
       );
       setIsEditCustomerDialogOpen(false);
       resetSelectedCustomer();
-    } catch (error) {
+      // Recarregar clientes para garantir sincronização
+      const refreshResponse = await fetch("/api/customers");
+      if (refreshResponse.ok) {
+        const refreshedCustomers = await refreshResponse.json();
+        setCustomers(refreshedCustomers);
+      }
+    } catch (error: any) {
       console.error(error);
+      alert(`Erro ao atualizar cliente: ${error.message || 'Erro desconhecido'}`);
     }
   }, [
     selectedCustomerId,
