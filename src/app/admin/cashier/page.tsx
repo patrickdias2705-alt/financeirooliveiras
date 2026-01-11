@@ -34,6 +34,7 @@ import { EllipsisVerticalIcon, Loader2Icon } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { formatDate } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -41,6 +42,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DatePicker } from "@/components/date-picker";
 
 type TransactionType = "income" | "expense";
 
@@ -50,8 +52,11 @@ interface Transaction {
   type: TransactionType;
   category: string;
   created_at: string;
+  transaction_date?: string;
   amount: number;
   status: string;
+  installments?: number;
+  installment_value?: number;
 }
 
 export default function Cashier() {
@@ -67,7 +72,12 @@ export default function Cashier() {
     type: "income",
     amount: 0,
     status: "completed",
+    installments: 1,
+    transaction_date: new Date().toISOString().split('T')[0],
   });
+  const [showInstallmentsDialog, setShowInstallmentsDialog] = useState(false);
+  const [transactionInstallments, setTransactionInstallments] = useState<any[]>([]);
+  const [selectedTransactionId, setSelectedTransactionId] = useState<number | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -76,12 +86,23 @@ export default function Cashier() {
 
   const handleAddTransaction = async () => {
     try {
+      const transactionData = {
+        ...newTransaction,
+        installments: newTransaction.type === "expense" && (newTransaction.installments || 1) > 1 
+          ? newTransaction.installments 
+          : 1,
+        installment_value: newTransaction.type === "expense" && (newTransaction.installments || 1) > 1
+          ? (newTransaction.amount || 0) / (newTransaction.installments || 1)
+          : null,
+        transaction_date: newTransaction.transaction_date || new Date().toISOString().split('T')[0],
+      };
+
       const response = await fetch("/api/transactions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(newTransaction),
+        body: JSON.stringify(transactionData),
       });
 
       if (response.ok) {
@@ -93,12 +114,23 @@ export default function Cashier() {
           type: "income",
           amount: 0,
           status: "completed",
+          installments: 1,
+          transaction_date: new Date().toISOString().split('T')[0],
         });
+        // Recarregar transações
+        const refreshResponse = await fetch("/api/transactions");
+        if (refreshResponse.ok) {
+          const refreshedTransactions = await refreshResponse.json();
+          setTransactions(refreshedTransactions);
+        }
       } else {
-        console.error("Failed to add transaction");
+        const errorData = await response.json();
+        console.error("Failed to add transaction:", errorData);
+        alert(`Erro ao adicionar transação: ${errorData.error || 'Erro desconhecido'}`);
       }
     } catch (error) {
       console.error("Error adding transaction:", error);
+      alert("Erro ao adicionar transação. Tente novamente.");
     }
   };
 
@@ -170,6 +202,7 @@ export default function Cashier() {
                 <TableHead>Tipo</TableHead>
                 <TableHead>Data</TableHead>
                 <TableHead>Valor</TableHead>
+                <TableHead>Parcelas</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead></TableHead>
                 <TableHead>
@@ -188,6 +221,15 @@ export default function Cashier() {
                   </TableCell>
                   <TableCell>{formatDate(transaction.created_at)}</TableCell>
                   <TableCell>R$ {transaction.amount.toFixed(2)}</TableCell>
+                  <TableCell>
+                    {transaction.installments && transaction.installments > 1 ? (
+                      <span className="text-sm">
+                        {transaction.installments}x de R$ {transaction.installment_value?.toFixed(2) || (transaction.amount / transaction.installments).toFixed(2)}
+                      </span>
+                    ) : (
+                      "À vista"
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Badge
                       variant={
@@ -213,6 +255,22 @@ export default function Cashier() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem>Editar</DropdownMenuItem>
+                        {transaction.type === "expense" && transaction.installments && transaction.installments > 1 && (
+                          <DropdownMenuItem
+                            onClick={async () => {
+                              setSelectedTransactionId(transaction.id);
+                              // Buscar parcelas da despesa
+                              const response = await fetch(`/api/transactions/${transaction.id}/installments`);
+                              if (response.ok) {
+                                const installments = await response.json();
+                                setTransactionInstallments(installments);
+                                setShowInstallmentsDialog(true);
+                              }
+                            }}
+                          >
+                            Ver Parcelas
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem
                           onClick={() => {
                             setTransactionToDelete(transaction);
@@ -268,6 +326,7 @@ export default function Cashier() {
                   <Input
                     name="amount"
                     type="number"
+                    step="0.01"
                     value={newTransaction.amount}
                     onChange={handleInputChange}
                     placeholder="Valor"
@@ -296,6 +355,50 @@ export default function Cashier() {
                   <Button onClick={handleAddTransaction}>Adicionar</Button>
                 </TableCell>
               </TableRow>
+              {newTransaction.type === "expense" && (
+                <TableRow>
+                  <TableCell colSpan={2}>
+                    <Label>Parcelas (apenas para despesas)</Label>
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="12"
+                      value={newTransaction.installments || 1}
+                      onChange={(e) =>
+                        setNewTransaction({
+                          ...newTransaction,
+                          installments: parseInt(e.target.value) || 1,
+                        })
+                      }
+                      placeholder="Número de parcelas"
+                    />
+                  </TableCell>
+                  <TableCell colSpan={2}>
+                    <Label>Data da Transação</Label>
+                  </TableCell>
+                  <TableCell>
+                    <DatePicker
+                      value={newTransaction.transaction_date}
+                      onChange={(date) =>
+                        setNewTransaction({
+                          ...newTransaction,
+                          transaction_date: date,
+                        })
+                      }
+                      min="2025-10-01"
+                      max="2027-12-31"
+                    />
+                  </TableCell>
+                  <TableCell colSpan={3}>
+                    {(newTransaction.installments || 1) > 1 && (
+                      <span className="text-sm text-muted-foreground">
+                        {newTransaction.installments}x de R$ {((newTransaction.amount || 0) / (newTransaction.installments || 1)).toFixed(2)}
+                      </span>
+                    )}
+                  </TableCell>
+              </TableRow>
             </TableBody>
           </Table>
         </CardContent>
@@ -323,6 +426,75 @@ export default function Cashier() {
             <Button variant="destructive" onClick={handleDeleteTransaction}>
               Excluir
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Parcelas */}
+      <Dialog open={showInstallmentsDialog} onOpenChange={setShowInstallmentsDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Parcelas da Despesa</DialogTitle>
+            <DialogDescription>
+              Gerencie as parcelas desta despesa
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {transactionInstallments.map((installment) => (
+              <div
+                key={installment.id}
+                className={`p-3 border rounded-lg flex items-center justify-between ${
+                  installment.paid
+                    ? "bg-green-500/20 border-green-500/50"
+                    : "bg-orange-500/20 border-orange-500/50"
+                }`}
+              >
+                <div>
+                  <p className="font-medium">
+                    {installment.installment_number}ª Parcela
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    R$ {installment.amount.toFixed(2)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Vencimento: {new Date(installment.due_date + 'T00:00:00').toLocaleDateString('pt-BR')}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-sm font-medium ${
+                    installment.paid ? "text-green-700" : "text-orange-700"
+                  }`}>
+                    {installment.paid ? "✓ Paga" : "⏳ Pendente"}
+                  </span>
+                  {!installment.paid && (
+                    <Button
+                      size="sm"
+                      onClick={async () => {
+                        if (!selectedTransactionId) return;
+                        const response = await fetch(`/api/transactions/installments/${installment.id}`, {
+                          method: "PUT",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ paid: true, paid_at: new Date().toISOString() }),
+                        });
+                        if (response.ok) {
+                          // Recarregar parcelas
+                          const refreshResponse = await fetch(`/api/transactions/${selectedTransactionId}/installments`);
+                          if (refreshResponse.ok) {
+                            const refreshed = await refreshResponse.json();
+                            setTransactionInstallments(refreshed);
+                          }
+                        }
+                      }}
+                    >
+                      Marcar como Paga
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setShowInstallmentsDialog(false)}>Fechar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
