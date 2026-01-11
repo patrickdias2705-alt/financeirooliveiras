@@ -92,10 +92,23 @@ CREATE TABLE IF NOT EXISTS installments (
     due_date DATE NOT NULL,
     paid BOOLEAN DEFAULT FALSE,
     paid_at TIMESTAMP WITH TIME ZONE,
-    user_uid UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'America/Sao_Paulo'),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'America/Sao_Paulo')
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'America/Sao_Paulo')
 );
+
+-- Adicionar user_uid se não existir
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'installments' AND column_name = 'user_uid'
+    ) THEN
+        ALTER TABLE installments ADD COLUMN user_uid UUID REFERENCES auth.users(id) ON DELETE CASCADE;
+    END IF;
+END $$;
+
+-- Adicionar updated_at se não existir
+ALTER TABLE installments 
+ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'America/Sao_Paulo');
 
 CREATE INDEX IF NOT EXISTS idx_installments_order_id ON installments(order_id);
 CREATE INDEX IF NOT EXISTS idx_installments_due_date ON installments(due_date);
@@ -121,10 +134,23 @@ CREATE TABLE IF NOT EXISTS expense_installments (
     due_date DATE NOT NULL,
     paid BOOLEAN DEFAULT FALSE,
     paid_at TIMESTAMP WITH TIME ZONE,
-    user_uid UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'America/Sao_Paulo'),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'America/Sao_Paulo')
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'America/Sao_Paulo')
 );
+
+-- Adicionar user_uid se não existir
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'expense_installments' AND column_name = 'user_uid'
+    ) THEN
+        ALTER TABLE expense_installments ADD COLUMN user_uid UUID REFERENCES auth.users(id) ON DELETE CASCADE;
+    END IF;
+END $$;
+
+-- Adicionar updated_at se não existir
+ALTER TABLE expense_installments 
+ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'America/Sao_Paulo');
 
 CREATE INDEX IF NOT EXISTS idx_expense_installments_transaction_id ON expense_installments(transaction_id);
 CREATE INDEX IF NOT EXISTS idx_expense_installments_due_date ON expense_installments(due_date);
@@ -192,26 +218,56 @@ CREATE TRIGGER trigger_return_products_on_cancel
 -- Installments
 ALTER TABLE installments ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can view their own installments" ON installments;
-CREATE POLICY "Users can view their own installments" ON installments 
-    FOR SELECT USING (auth.uid() = user_uid);
-DROP POLICY IF EXISTS "Users can update their own installments" ON installments;
-CREATE POLICY "Users can update their own installments" ON installments 
-    FOR UPDATE USING (auth.uid() = user_uid);
-DROP POLICY IF EXISTS "Users can create their own installments" ON installments;
-CREATE POLICY "Users can create their own installments" ON installments 
-    FOR INSERT WITH CHECK (auth.uid() = user_uid);
+-- Verificar se user_uid existe antes de criar política
+DO $$ 
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'installments' AND column_name = 'user_uid'
+    ) THEN
+        EXECUTE 'CREATE POLICY "Users can view their own installments" ON installments 
+            FOR SELECT USING (auth.uid() = user_uid)';
+        EXECUTE 'CREATE POLICY "Users can update their own installments" ON installments 
+            FOR UPDATE USING (auth.uid() = user_uid)';
+        EXECUTE 'CREATE POLICY "Users can create their own installments" ON installments 
+            FOR INSERT WITH CHECK (auth.uid() = user_uid)';
+    ELSE
+        -- Se não tem user_uid, usar order_id para verificar através de orders
+        EXECUTE 'CREATE POLICY "Users can view their own installments" ON installments 
+            FOR SELECT USING (EXISTS (SELECT 1 FROM orders WHERE orders.id = installments.order_id AND orders.user_uid = auth.uid()))';
+        EXECUTE 'CREATE POLICY "Users can update their own installments" ON installments 
+            FOR UPDATE USING (EXISTS (SELECT 1 FROM orders WHERE orders.id = installments.order_id AND orders.user_uid = auth.uid()))';
+        EXECUTE 'CREATE POLICY "Users can create their own installments" ON installments 
+            FOR INSERT WITH CHECK (EXISTS (SELECT 1 FROM orders WHERE orders.id = installments.order_id AND orders.user_uid = auth.uid()))';
+    END IF;
+END $$;
 
 -- Expense Installments
 ALTER TABLE expense_installments ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can view their own expense installments" ON expense_installments;
-CREATE POLICY "Users can view their own expense installments" ON expense_installments 
-    FOR SELECT USING (auth.uid() = user_uid);
-DROP POLICY IF EXISTS "Users can update their own expense installments" ON expense_installments;
-CREATE POLICY "Users can update their own expense installments" ON expense_installments 
-    FOR UPDATE USING (auth.uid() = user_uid);
-DROP POLICY IF EXISTS "Users can create their own expense installments" ON expense_installments;
-CREATE POLICY "Users can create their own expense installments" ON expense_installments 
-    FOR INSERT WITH CHECK (auth.uid() = user_uid);
+-- Verificar se user_uid existe antes de criar política
+DO $$ 
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'expense_installments' AND column_name = 'user_uid'
+    ) THEN
+        EXECUTE 'CREATE POLICY "Users can view their own expense installments" ON expense_installments 
+            FOR SELECT USING (auth.uid() = user_uid)';
+        EXECUTE 'CREATE POLICY "Users can update their own expense installments" ON expense_installments 
+            FOR UPDATE USING (auth.uid() = user_uid)';
+        EXECUTE 'CREATE POLICY "Users can create their own expense installments" ON expense_installments 
+            FOR INSERT WITH CHECK (auth.uid() = user_uid)';
+    ELSE
+        -- Se não tem user_uid, usar transaction_id para verificar através de transactions
+        EXECUTE 'CREATE POLICY "Users can view their own expense installments" ON expense_installments 
+            FOR SELECT USING (EXISTS (SELECT 1 FROM transactions WHERE transactions.id = expense_installments.transaction_id AND transactions.user_uid = auth.uid()))';
+        EXECUTE 'CREATE POLICY "Users can update their own expense installments" ON expense_installments 
+            FOR UPDATE USING (EXISTS (SELECT 1 FROM transactions WHERE transactions.id = expense_installments.transaction_id AND transactions.user_uid = auth.uid()))';
+        EXECUTE 'CREATE POLICY "Users can create their own expense installments" ON expense_installments 
+            FOR INSERT WITH CHECK (EXISTS (SELECT 1 FROM transactions WHERE transactions.id = expense_installments.transaction_id AND transactions.user_uid = auth.uid()))';
+    END IF;
+END $$;
 
 -- Categories
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
