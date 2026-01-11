@@ -57,7 +57,7 @@ type Customer = {
   phone: string;
   status: "active" | "inactive";
   last_order_date?: string;
-  customer_status?: "ativo" | "hibernando";
+  customer_status?: "ativo" | "hibernando" | "novo";
 };
 
 type Order = {

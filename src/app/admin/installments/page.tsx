@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Card,
   CardContent,
@@ -57,11 +57,7 @@ export default function InstallmentsPage() {
   const [filter, setFilter] = useState<"all" | "paid" | "pending">("all");
   const [type, setType] = useState<"all" | "orders" | "expenses">("all");
 
-  useEffect(() => {
-    fetchInstallments();
-  }, [filter, type]);
-
-  const fetchInstallments = async () => {
+  const fetchInstallments = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -154,7 +150,11 @@ export default function InstallmentsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter, type]);
+
+  useEffect(() => {
+    fetchInstallments();
+  }, [fetchInstallments]);
 
   const handleMarkAsPaid = async (installment: Installment) => {
     try {
