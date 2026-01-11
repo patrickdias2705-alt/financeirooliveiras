@@ -43,26 +43,33 @@
 - Limite de outubro 2025 a dezembro 2027
 - Usado em pedidos
 
-## 🚧 Em Andamento
+## ✅ Concluídos (Continuação)
 
-### 9. ⏳ Parcelamento nas Despesas
+### 9. ✅ Parcelamento nas Despesas
 - Schema criado (expense_installments)
-- Precisa atualizar página de cashier
+- Página de cashier atualizada
+- Campo de parcelas adicionado (1-12x)
+- Dialog para visualizar e marcar parcelas como pagas
+- API criada para gerenciar parcelas de despesas
 
-### 10. ⏳ Sistema de Controle de Parcelas do Cliente
+### 10. ✅ Sistema de Controle de Parcelas do Cliente
 - Tabela installments já existe
-- Precisa criar interface para marcar parcelas como pagas
+- Interface criada para marcar parcelas como pagas
+- Botão "Marcar Paga" em cada parcela pendente
+- Atualização em tempo real após marcar como paga
 
-### 11. ⏳ Categoria "Presencial"
+### 11. ✅ Categoria "Presencial"
 - Schema atualizado para incluir
-- Precisa adicionar na interface de categorias
+- Categoria criada automaticamente no schema
+- Disponível para uso em produtos
 
 ## 📝 Próximos Passos
 
-1. Atualizar página de cashier para adicionar parcelamento em despesas
-2. Criar página/componente para gerenciar parcelas de clientes
-3. Adicionar categoria "Presencial" na interface de categorias
-4. Testar todas as funcionalidades
+1. ✅ Executar `SCHEMA_MELHORADO.sql` no Supabase
+2. ✅ Testar todas as funcionalidades
+3. ✅ Verificar se categoria "Presencial" foi criada
+4. ✅ Testar parcelamento em despesas
+5. ✅ Testar marcação de parcelas de clientes como pagas
 
 ## 🔧 Arquivos Criados/Modificados
 
@@ -72,14 +79,21 @@
 - `src/components/ui/textarea.tsx` - Componente de texto multilinha
 
 ### Arquivos Modificados:
-- `src/app/admin/customers/page.tsx` - Correções de edição e adição
+- `src/app/admin/customers/page.tsx` - Correções de edição, adição, controle de parcelas, categoria "novo"
 - `src/app/admin/products/page.tsx` - Correções de edição
 - `src/app/admin/orders/page.tsx` - Adicionado observação e data editável
-- `src/app/api/customers/route.ts` - Retorna todos os campos
+- `src/app/admin/cashier/page.tsx` - Adicionado parcelamento em despesas
+- `src/app/api/customers/route.ts` - Retorna todos os campos, categoria padrão "novo"
 - `src/app/api/customers/[customerId]/route.ts` - Correção de edição
 - `src/app/api/products/[productId]/route.ts` - Correção de rota e edição
 - `src/app/api/orders/route.ts` - Adicionado notes e order_date
 - `src/app/api/orders/[orderId]/route.ts` - Retorno de produtos ao cancelar
+- `src/app/api/transactions/route.ts` - Suporte a parcelamento em despesas
+
+### Novos Arquivos de API:
+- `src/app/api/transactions/[transactionId]/installments/route.ts` - Buscar parcelas de despesa
+- `src/app/api/transactions/installments/[installmentId]/route.ts` - Marcar parcela de despesa como paga
+- `src/app/api/orders/[orderId]/installments/[installmentId]/route.ts` - Marcar parcela de cliente como paga
 
 ## ⚠️ Importante
 
