@@ -78,6 +78,9 @@ export default function Cashier() {
   const [showInstallmentsDialog, setShowInstallmentsDialog] = useState(false);
   const [transactionInstallments, setTransactionInstallments] = useState<any[]>([]);
   const [selectedTransactionId, setSelectedTransactionId] = useState<number | null>(null);
+  const [isEditTransactionDialogOpen, setIsEditTransactionDialogOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [editTransaction, setEditTransaction] = useState<Partial<Transaction>>({});
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -254,7 +257,23 @@ export default function Cashier() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Editar</DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setSelectedTransaction(transaction);
+                            setEditTransaction({
+                              description: transaction.description,
+                              category: transaction.category,
+                              type: transaction.type,
+                              amount: transaction.amount,
+                              status: transaction.status,
+                              installments: transaction.installments || 1,
+                              transaction_date: transaction.transaction_date || transaction.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+                            });
+                            setIsEditTransactionDialogOpen(true);
+                          }}
+                        >
+                          Editar
+                        </DropdownMenuItem>
                         {transaction.type === "expense" && transaction.installments && transaction.installments > 1 && (
                           <DropdownMenuItem
                             onClick={async () => {
@@ -397,7 +416,7 @@ export default function Cashier() {
                         {newTransaction.installments}x de R$ {((newTransaction.amount || 0) / (newTransaction.installments || 1)).toFixed(2)}
                       </span>
                     )}
-                  </TableCell>
+                </TableCell>
               </TableRow>
             </TableBody>
           </Table>
@@ -495,6 +514,150 @@ export default function Cashier() {
           </div>
           <DialogFooter>
             <Button onClick={() => setShowInstallmentsDialog(false)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Editar Transação */}
+      <Dialog open={isEditTransactionDialogOpen} onOpenChange={setIsEditTransactionDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Editar Transação</DialogTitle>
+            <DialogDescription>
+              Edite os detalhes da transação
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="editDescription">Descrição</Label>
+              <Input
+                id="editDescription"
+                value={editTransaction.description || ""}
+                onChange={(e) => setEditTransaction({ ...editTransaction, description: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="editCategory">Categoria</Label>
+              <Input
+                id="editCategory"
+                value={editTransaction.category || ""}
+                onChange={(e) => setEditTransaction({ ...editTransaction, category: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="editType">Tipo</Label>
+              <Select
+                value={editTransaction.type}
+                onValueChange={(value: TransactionType) =>
+                  setEditTransaction({ ...editTransaction, type: value })
+                }
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="income">Receita</SelectItem>
+                  <SelectItem value="expense">Despesa</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="editAmount">Valor</Label>
+              <Input
+                id="editAmount"
+                type="number"
+                step="0.01"
+                value={editTransaction.amount || 0}
+                onChange={(e) => setEditTransaction({ ...editTransaction, amount: parseFloat(e.target.value) || 0 })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="editStatus">Status</Label>
+              <Select
+                value={editTransaction.status}
+                onValueChange={(value) =>
+                  setEditTransaction({ ...editTransaction, status: value })
+                }
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="completed">Concluído</SelectItem>
+                  <SelectItem value="pending">Pendente</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="editDate">Data</Label>
+              <DatePicker
+                value={editTransaction.transaction_date}
+                onChange={(date) => setEditTransaction({ ...editTransaction, transaction_date: date })}
+                min="2025-10-01"
+                max="2027-12-31"
+                className="col-span-3"
+              />
+            </div>
+            {editTransaction.type === "expense" && (
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="editInstallments">Parcelas</Label>
+                <Input
+                  id="editInstallments"
+                  type="number"
+                  min="1"
+                  max="12"
+                  value={editTransaction.installments || 1}
+                  onChange={(e) => setEditTransaction({ ...editTransaction, installments: parseInt(e.target.value) || 1 })}
+                  className="col-span-3"
+                />
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsEditTransactionDialogOpen(false);
+                setSelectedTransaction(null);
+                setEditTransaction({});
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!selectedTransaction) return;
+                try {
+                  const response = await fetch(`/api/transactions/${selectedTransaction.id}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(editTransaction),
+                  });
+                  if (response.ok) {
+                    // Recarregar transações
+                    const refreshResponse = await fetch("/api/transactions");
+                    if (refreshResponse.ok) {
+                      const refreshed = await refreshResponse.json();
+                      setTransactions(refreshed);
+                    }
+                    setIsEditTransactionDialogOpen(false);
+                    setSelectedTransaction(null);
+                    setEditTransaction({});
+                  } else {
+                    const errorData = await response.json();
+                    alert(`Erro ao atualizar: ${errorData.error || 'Erro desconhecido'}`);
+                  }
+                } catch (error) {
+                  console.error(error);
+                  alert("Erro ao atualizar transação");
+                }
+              }}
+            >
+              Salvar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

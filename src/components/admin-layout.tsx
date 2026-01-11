@@ -27,6 +27,7 @@ import {
   ShoppingCartIcon,
   UsersIcon,
   ShoppingBagIcon,
+  CreditCardIcon,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { createClient } from "@/lib/supabase/client";
@@ -38,6 +39,7 @@ const pageNames: { [key: string]: string } = {
   "/admin/orders": "Pedidos",
   "/admin/pos": "Ponto de Venda",
   "/admin/cashier": "Caixa",
+  "/admin/installments": "Parcelas",
 };
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -199,6 +201,22 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                   </Link>
                 </TooltipTrigger>
                 <TooltipContent side="right" className="bg-gray-800 border-amber-800/50 text-amber-400">Ponto de Venda</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link
+                    href="/admin/installments"
+                    className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors md:h-8 md:w-8 ${
+                      pathname === "/admin/installments"
+                        ? "bg-gradient-to-br from-amber-900/50 to-yellow-900/50 text-amber-400"
+                        : "text-amber-600/70 hover:text-amber-400 hover:bg-amber-900/20"
+                    }`}
+                  >
+                    <CreditCardIcon className="h-5 w-5" />
+                    <span className="sr-only">Parcelas</span>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="bg-gray-800 border-amber-800/50 text-amber-400">Parcelas</TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </nav>

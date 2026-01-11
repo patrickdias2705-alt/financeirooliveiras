@@ -16,9 +16,12 @@ export async function PUT(
   const updatedTransaction = await request.json();
   const transactionId = params.transactionId;
 
+  // Remover campos que não devem ser atualizados
+  const { id, user_uid, ...transactionData } = updatedTransaction;
+
   const { data, error } = await supabase
     .from('transactions')
-    .update({ ...updatedTransaction, user_uid: user.id })
+    .update({ ...transactionData })
     .eq('id', transactionId)
     .eq('user_uid', user.id)
     .select()
