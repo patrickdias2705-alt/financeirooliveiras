@@ -16,6 +16,13 @@ export async function PUT(
   const updatedOrder = await request.json();
   const orderId = params.orderId;
 
+  // Buscar pedido atual para verificar se está mudando para cancelled
+  const { data: currentOrder } = await supabase
+    .from('orders')
+    .select('status')
+    .eq('id', orderId)
+    .single();
+
   // Remover id do objeto se existir, pois não deve ser atualizado
   const { id, ...orderData } = updatedOrder;
 
@@ -33,6 +40,36 @@ export async function PUT(
 
   if (!data) {
     return NextResponse.json({ error: 'Order not found or not authorized' }, { status: 404 })
+  }
+
+  // Se o status mudou para cancelled, retornar produtos ao estoque
+  if (currentOrder && currentOrder.status !== 'cancelled' && updatedOrder.status === 'cancelled') {
+    // Buscar itens do pedido
+    const { data: orderItems } = await supabase
+      .from('order_items')
+      .select('product_id, quantity')
+      .eq('order_id', orderId);
+
+    if (orderItems && orderItems.length > 0) {
+      // Retornar cada produto ao estoque
+      for (const item of orderItems) {
+        // Buscar produto atual
+        const { data: product } = await supabase
+          .from('products')
+          .select('in_stock')
+          .eq('id', item.product_id)
+          .eq('user_uid', user.id)
+          .single();
+        
+        if (product) {
+          await supabase
+            .from('products')
+            .update({ in_stock: product.in_stock + item.quantity })
+            .eq('id', item.product_id)
+            .eq('user_uid', user.id);
+        }
+      }
+    }
   }
 
   return NextResponse.json(data)

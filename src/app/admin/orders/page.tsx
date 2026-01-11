@@ -50,6 +50,8 @@ import {
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
+import { DatePicker } from "@/components/date-picker";
+import { Textarea } from "@/components/ui/textarea";
 
 type Order = {
   id: number;
@@ -57,6 +59,8 @@ type Order = {
   total_amount: number;
   status: "completed" | "pending" | "cancelled";
   created_at: string;
+  order_date?: string;
+  notes?: string;
   customer: {
     name: string;
   };
@@ -70,6 +74,8 @@ export default function OrdersPage() {
   const [newOrderCustomerName, setNewOrderCustomerName] = useState("");
   const [newOrderTotal, setNewOrderTotal] = useState("");
   const [newOrderStatus, setNewOrderStatus] = useState<"completed" | "pending" | "cancelled">("pending");
+  const [newOrderDate, setNewOrderDate] = useState<string>("");
+  const [newOrderNotes, setNewOrderNotes] = useState("");
   const [isEditOrderDialogOpen, setIsEditOrderDialogOpen] = useState(false);
   const [isDeleteConfirmationOpen, setIsDeleteConfirmationOpen] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
@@ -115,14 +121,23 @@ export default function OrdersPage() {
     setNewOrderCustomerName("");
     setNewOrderTotal("");
     setNewOrderStatus("pending");
+    setNewOrderDate("");
+    setNewOrderNotes("");
   };
+
+  // Definir datas mínima e máxima (outubro 2025 a 2027)
+  const minDate = "2025-10-01";
+  const maxDate = "2027-12-31";
 
   const handleAddOrder = useCallback(async () => {
     try {
+      const today = new Date().toISOString().split('T')[0];
       const newOrder = {
         total_amount: parseFloat(newOrderTotal),
         status: newOrderStatus,
-        created_at: new Date().toISOString().split('T')[0], // Current created_at in YYYY-MM-DD format
+        order_date: newOrderDate || today,
+        notes: newOrderNotes || null,
+        created_at: today,
       };
       const response = await fetch("/api/orders", {
         method: "POST",
@@ -133,26 +148,35 @@ export default function OrdersPage() {
       });
 
       if (!response.ok) {
-        throw new Error("Error creating order");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Error creating order");
       }
 
       const createdOrder = await response.json();
       setOrders([...orders, createdOrder]);
       setShowNewOrderDialog(false);
       resetSelectedOrder();
-    } catch (error) {
+      // Recarregar pedidos
+      const refreshResponse = await fetch("/api/orders");
+      if (refreshResponse.ok) {
+        const refreshedOrders = await refreshResponse.json();
+        setOrders(refreshedOrders);
+      }
+    } catch (error: any) {
       console.error(error);
+      alert(`Erro ao criar pedido: ${error.message || 'Erro desconhecido'}`);
     }
-  }, [newOrderTotal, newOrderStatus, orders]);
+  }, [newOrderTotal, newOrderStatus, newOrderDate, newOrderNotes, orders]);
 
   const handleEditOrder = useCallback(async () => {
     if (!selectedOrderId) return;
     try {
+      const originalOrder = orders.find(o => o.id === selectedOrderId);
       const updatedOrder = {
-        id: selectedOrderId,
         total_amount: parseFloat(newOrderTotal),
         status: newOrderStatus,
-        created_at: orders.find(o => o.id === selectedOrderId)?.created_at, // Preserve the original created_at
+        order_date: newOrderDate || originalOrder?.order_date || originalOrder?.created_at?.split('T')[0],
+        notes: newOrderNotes || null,
       };
       const response = await fetch(`/api/orders/${selectedOrderId}`, {
         method: "PUT",
@@ -163,17 +187,25 @@ export default function OrdersPage() {
       });
 
       if (!response.ok) {
-        throw new Error("Error updating order");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Error updating order");
       }
 
       const updatedOrderData = await response.json();
       setOrders(orders.map((o) => (o.id === updatedOrderData.id ? updatedOrderData : o)));
       setIsEditOrderDialogOpen(false);
       resetSelectedOrder();
-    } catch (error) {
+      // Recarregar pedidos
+      const refreshResponse = await fetch("/api/orders");
+      if (refreshResponse.ok) {
+        const refreshedOrders = await refreshResponse.json();
+        setOrders(refreshedOrders);
+      }
+    } catch (error: any) {
       console.error(error);
+      alert(`Erro ao atualizar pedido: ${error.message || 'Erro desconhecido'}`);
     }
-  }, [selectedOrderId, newOrderTotal, newOrderStatus, orders]);
+  }, [selectedOrderId, newOrderTotal, newOrderStatus, newOrderDate, newOrderNotes, orders]);
 
   const handleDeleteOrder = useCallback(async () => {
     if (!orderToDelete) return;
@@ -315,6 +347,8 @@ export default function OrdersPage() {
                           setNewOrderCustomerName(order.customer.name);
                           setNewOrderTotal(order.total_amount.toString());
                           setNewOrderStatus(order.status);
+                          setNewOrderDate(order.order_date || order.created_at?.split('T')[0] || "");
+                          setNewOrderNotes(order.notes || "");
                           setIsEditOrderDialogOpen(true);
                         }}
                       >
@@ -403,6 +437,28 @@ export default function OrdersPage() {
                   <SelectItem value="cancelled">Cancelado</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="orderDate">Data do Pedido</Label>
+              <DatePicker
+                value={newOrderDate}
+                onChange={(date) => setNewOrderDate(date)}
+                min={minDate}
+                max={maxDate}
+                placeholder="Selecione a data"
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-start gap-4">
+              <Label htmlFor="notes" className="pt-2">Observações</Label>
+              <Textarea
+                id="notes"
+                value={newOrderNotes}
+                onChange={(e) => setNewOrderNotes(e.target.value)}
+                placeholder="Observações sobre a compra..."
+                className="col-span-3"
+                rows={3}
+              />
             </div>
           </div>
           <DialogFooter>

@@ -20,6 +20,8 @@ export async function GET(request: Request) {
       user_uid,
       status,
       created_at,
+      order_date,
+      notes,
       customer:customer_id (
         name
       )
@@ -43,10 +45,33 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { customerId, paymentMethodId, products, total, installments = 1, installmentValue } = await request.json();
+  const requestData = await request.json();
+  const { customerId, paymentMethodId, products, total, installments = 1, installmentValue, order_date, notes, status } = requestData;
 
   try {
-    // Insert the order
+    // Se não tem produtos, é um pedido simples (da página de orders)
+    if (!products || products.length === 0) {
+      const today = new Date().toISOString().split('T')[0];
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          total_amount: total,
+          user_uid: user.id,
+          status: status || 'pending',
+          order_date: order_date || today,
+          notes: notes || null,
+        })
+        .select('*, customer:customers(name)')
+        .single();
+
+      if (orderError) {
+        throw orderError;
+      }
+
+      return NextResponse.json(orderData);
+    }
+
+    // Insert the order (com produtos - do POS)
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
       .insert({
@@ -56,7 +81,9 @@ export async function POST(request: Request) {
         status: 'completed',
         installments: installments,
         installment_value: installmentValue || total,
-        payment_method_id: paymentMethodId
+        payment_method_id: paymentMethodId,
+        order_date: order_date || new Date().toISOString().split('T')[0],
+        notes: notes || null,
       })
       .select('*, customer:customers(name)')
       .single();
