@@ -221,12 +221,13 @@ DROP POLICY IF EXISTS "Users can view their own installments" ON installments;
 DROP POLICY IF EXISTS "Users can update their own installments" ON installments;
 DROP POLICY IF EXISTS "Users can create their own installments" ON installments;
 -- Usar order_id para verificar através de orders (mais seguro e não depende de user_uid)
+-- Fazer cast de user_uid para UUID se necessário
 CREATE POLICY "Users can view their own installments" ON installments 
-    FOR SELECT USING (EXISTS (SELECT 1 FROM orders WHERE orders.id = installments.order_id AND orders.user_uid = auth.uid()));
+    FOR SELECT USING (EXISTS (SELECT 1 FROM orders WHERE orders.id = installments.order_id AND orders.user_uid::uuid = auth.uid()));
 CREATE POLICY "Users can update their own installments" ON installments 
-    FOR UPDATE USING (EXISTS (SELECT 1 FROM orders WHERE orders.id = installments.order_id AND orders.user_uid = auth.uid()));
+    FOR UPDATE USING (EXISTS (SELECT 1 FROM orders WHERE orders.id = installments.order_id AND orders.user_uid::uuid = auth.uid()));
 CREATE POLICY "Users can create their own installments" ON installments 
-    FOR INSERT WITH CHECK (EXISTS (SELECT 1 FROM orders WHERE orders.id = installments.order_id AND orders.user_uid = auth.uid()));
+    FOR INSERT WITH CHECK (EXISTS (SELECT 1 FROM orders WHERE orders.id = installments.order_id AND orders.user_uid::uuid = auth.uid()));
 
 -- Expense Installments
 ALTER TABLE expense_installments ENABLE ROW LEVEL SECURITY;
@@ -234,12 +235,13 @@ DROP POLICY IF EXISTS "Users can view their own expense installments" ON expense
 DROP POLICY IF EXISTS "Users can update their own expense installments" ON expense_installments;
 DROP POLICY IF EXISTS "Users can create their own expense installments" ON expense_installments;
 -- Usar transaction_id para verificar através de transactions (mais seguro e não depende de user_uid)
+-- Fazer cast de user_uid para UUID se necessário
 CREATE POLICY "Users can view their own expense installments" ON expense_installments 
-    FOR SELECT USING (EXISTS (SELECT 1 FROM transactions WHERE transactions.id = expense_installments.transaction_id AND transactions.user_uid = auth.uid()));
+    FOR SELECT USING (EXISTS (SELECT 1 FROM transactions WHERE transactions.id = expense_installments.transaction_id AND transactions.user_uid::uuid = auth.uid()));
 CREATE POLICY "Users can update their own expense installments" ON expense_installments 
-    FOR UPDATE USING (EXISTS (SELECT 1 FROM transactions WHERE transactions.id = expense_installments.transaction_id AND transactions.user_uid = auth.uid()));
+    FOR UPDATE USING (EXISTS (SELECT 1 FROM transactions WHERE transactions.id = expense_installments.transaction_id AND transactions.user_uid::uuid = auth.uid()));
 CREATE POLICY "Users can create their own expense installments" ON expense_installments 
-    FOR INSERT WITH CHECK (EXISTS (SELECT 1 FROM transactions WHERE transactions.id = expense_installments.transaction_id AND transactions.user_uid = auth.uid()));
+    FOR INSERT WITH CHECK (EXISTS (SELECT 1 FROM transactions WHERE transactions.id = expense_installments.transaction_id AND transactions.user_uid::uuid = auth.uid()));
 
 -- Categories
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
@@ -252,10 +254,22 @@ BEGIN
         SELECT 1 FROM information_schema.columns 
         WHERE table_name = 'categories' AND column_name = 'user_uid'
     ) THEN
-        EXECUTE 'CREATE POLICY "Users can view categories" ON categories 
-            FOR SELECT USING (auth.uid() = user_uid OR TRUE)';
-        EXECUTE 'CREATE POLICY "Users can create categories" ON categories 
-            FOR INSERT WITH CHECK (auth.uid() = user_uid)';
+        -- Verificar tipo da coluna
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'categories' AND column_name = 'user_uid' AND data_type = 'uuid'
+        ) THEN
+            EXECUTE 'CREATE POLICY "Users can view categories" ON categories 
+                FOR SELECT USING (auth.uid() = user_uid OR TRUE)';
+            EXECUTE 'CREATE POLICY "Users can create categories" ON categories 
+                FOR INSERT WITH CHECK (auth.uid() = user_uid)';
+        ELSE
+            -- Se for VARCHAR, fazer cast
+            EXECUTE 'CREATE POLICY "Users can view categories" ON categories 
+                FOR SELECT USING (auth.uid()::text = user_uid::text OR TRUE)';
+            EXECUTE 'CREATE POLICY "Users can create categories" ON categories 
+                FOR INSERT WITH CHECK (auth.uid()::text = user_uid::text)';
+        END IF;
     ELSE
         -- Se não tem user_uid, permitir acesso a todos
         EXECUTE 'CREATE POLICY "Users can view categories" ON categories 
