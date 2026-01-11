@@ -352,6 +352,25 @@ export default function Cashier() {
                   />
                 </TableCell>
                 <TableCell>
+                  {newTransaction.type === "expense" ? (
+                    <Input
+                      type="number"
+                      min="1"
+                      max="12"
+                      value={newTransaction.installments || 1}
+                      onChange={(e) =>
+                        setNewTransaction({
+                          ...newTransaction,
+                          installments: parseInt(e.target.value) || 1,
+                        })
+                      }
+                      placeholder="Parcelas"
+                    />
+                  ) : (
+                    "À vista"
+                  )}
+                </TableCell>
+                <TableCell>
                   <Select
                     defaultValue={newTransaction.status}
                     onValueChange={(value) =>
@@ -370,54 +389,43 @@ export default function Cashier() {
                     </SelectContent>
                   </Select>
                 </TableCell>
+                <TableCell></TableCell>
                 <TableCell>
                   <Button onClick={handleAddTransaction}>Adicionar</Button>
                 </TableCell>
               </TableRow>
               {newTransaction.type === "expense" && (
                 <TableRow>
-                  <TableCell colSpan={2}>
-                    <Label>Parcelas (apenas para despesas)</Label>
+                  <TableCell colSpan={10}>
+                    <div className="grid grid-cols-2 gap-4 py-2">
+                      <div>
+                        <Label>Data da Transação</Label>
+                        <DatePicker
+                          value={newTransaction.transaction_date}
+                          onChange={(date) =>
+                            setNewTransaction({
+                              ...newTransaction,
+                              transaction_date: date,
+                            })
+                          }
+                          min="2025-10-01"
+                          max="2027-12-31"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        {(newTransaction.installments || 1) > 1 && (
+                          <div className="mt-6">
+                            <span className="text-sm text-muted-foreground">
+                              {newTransaction.installments}x de R$ {((newTransaction.amount || 0) / (newTransaction.installments || 1)).toFixed(2)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </TableCell>
-                  <TableCell>
-                    <Input
-                      type="number"
-                      min="1"
-                      max="12"
-                      value={newTransaction.installments || 1}
-                      onChange={(e) =>
-                        setNewTransaction({
-                          ...newTransaction,
-                          installments: parseInt(e.target.value) || 1,
-                        })
-                      }
-                      placeholder="Número de parcelas"
-                    />
-                  </TableCell>
-                  <TableCell colSpan={2}>
-                    <Label>Data da Transação</Label>
-                  </TableCell>
-                  <TableCell>
-                    <DatePicker
-                      value={newTransaction.transaction_date}
-                      onChange={(date) =>
-                        setNewTransaction({
-                          ...newTransaction,
-                          transaction_date: date,
-                        })
-                      }
-                      min="2025-10-01"
-                      max="2027-12-31"
-                    />
-                  </TableCell>
-                  <TableCell colSpan={3}>
-                    {(newTransaction.installments || 1) > 1 && (
-                      <span className="text-sm text-muted-foreground">
-                        {newTransaction.installments}x de R$ {((newTransaction.amount || 0) / (newTransaction.installments || 1)).toFixed(2)}
-                      </span>
-                    )}
-                </TableCell>
-              </TableRow>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>
