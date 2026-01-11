@@ -153,31 +153,33 @@ export default function CustomersPage() {
                   (Date.now() - orderDate.getTime()) / (1000 * 60 * 60 * 24)
                 );
                 
-                if (daysSince >= 30) {
+                // Hibernando apenas para quem não compra há 60+ dias
+                if (daysSince >= 60) {
                   customer.customer_status = "hibernando";
                 } else {
                   customer.customer_status = "ativo";
                 }
               } else {
-                customer.customer_status = "hibernando";
+                // Cliente novo (sem compras) começa como "novo"
+                customer.customer_status = "novo";
               }
               return customer;
             });
             
             setCustomers(customersWithStatus);
           } else {
-            // Se não conseguir buscar pedidos, apenas definir status padrão
+            // Se não conseguir buscar pedidos, definir status padrão como "novo"
             setCustomers(data.map((c: Customer) => ({
               ...c,
-              customer_status: "ativo" as const
+              customer_status: "novo" as const
             })));
           }
         } catch (error) {
           console.error("Error calculating customer status:", error);
-          // Em caso de erro, apenas definir status padrão sem travar
+          // Em caso de erro, definir status padrão como "novo"
           setCustomers(data.map((c: Customer) => ({
             ...c,
-            customer_status: "ativo" as const
+            customer_status: "novo" as const
           })));
         }
       } catch (error) {
@@ -453,6 +455,8 @@ export default function CustomersPage() {
                   ? "bg-green-500/20 text-green-600 border-green-500/50" 
                   : customer.customer_status === "hibernando"
                   ? "bg-orange-500/20 text-orange-600 border-orange-500/50"
+                  : customer.customer_status === "novo"
+                  ? "bg-blue-500/20 text-blue-600 border-blue-500/50"
                   : "bg-gray-500/20 text-gray-600 border-gray-500/50";
                 
                 return (
@@ -462,7 +466,10 @@ export default function CustomersPage() {
                   <TableCell>{customer.phone}</TableCell>
                     <TableCell>
                       <span className={`px-2 py-1 rounded text-xs font-medium border ${statusColor}`}>
-                        {customer.customer_status === "ativo" ? "Ativo" : customer.customer_status === "hibernando" ? "Hibernando" : "Inativo"}
+                        {customer.customer_status === "ativo" ? "Ativo" 
+                          : customer.customer_status === "hibernando" ? "Hibernando" 
+                          : customer.customer_status === "novo" ? "Novo"
+                          : "Inativo"}
                       </span>
                     </TableCell>
                     <TableCell>
@@ -731,9 +738,35 @@ export default function CustomersPage() {
                                     timeZone: 'America/Sao_Paulo'
                                   })}
                                 </p>
-                                <p className="text-xs font-medium">
-                                  {installment.paid ? '✓ Paga' : '⏳ Pendente'}
-                                </p>
+                                <div className="flex items-center justify-between mt-1">
+                                  <p className="text-xs font-medium">
+                                    {installment.paid ? '✓ Paga' : '⏳ Pendente'}
+                                  </p>
+                                  {!installment.paid && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-6 text-xs px-2"
+                                      onClick={async () => {
+                                        const response = await fetch(`/api/orders/${order.id}/installments/${installment.id}`, {
+                                          method: "PUT",
+                                          headers: { "Content-Type": "application/json" },
+                                          body: JSON.stringify({ paid: true, paid_at: new Date().toISOString() }),
+                                        });
+                                        if (response.ok) {
+                                          // Recarregar pedidos do cliente
+                                          const refreshResponse = await fetch(`/api/customers/${selectedCustomerId}/orders`);
+                                          if (refreshResponse.ok) {
+                                            const refreshedOrders = await refreshResponse.json();
+                                            setCustomerOrders(refreshedOrders);
+                                          }
+                                        }
+                                      }}
+                                    >
+                                      Marcar Paga
+                                    </Button>
+                                  )}
+                                </div>
                               </div>
                             ))}
                           </div>

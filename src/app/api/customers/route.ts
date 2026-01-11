@@ -37,7 +37,11 @@ export async function POST(request: Request) {
   const { data, error } = await supabase
     .from('customers')
     .insert([
-      { ...newCustomer, user_uid: user.id }
+      { 
+        ...newCustomer, 
+        user_uid: user.id,
+        customer_category: 'novo' // Clientes novos começam como "novo"
+      }
     ])
     .select()
 
