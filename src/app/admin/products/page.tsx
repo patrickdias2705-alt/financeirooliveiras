@@ -104,16 +104,21 @@ export default function Products() {
 
   const handleAddProduct = useCallback(async () => {
     try {
+      if (!productName.trim()) {
+        alert("Por favor, preencha o nome do produto.");
+        return;
+      }
+      
       // Encontrar o nome da categoria pelo ID
       const selectedCategory = categories.find(c => c.id.toString() === productCategory);
-      const categoryName = selectedCategory ? selectedCategory.name : productCategory;
+      const categoryName = selectedCategory ? selectedCategory.name : (productCategory || "");
       
       const newProduct = {
-        name: productName,
-        description: productDescription,
-        price: productPrice,
-        in_stock: productInStock,
-        category: categoryName,
+        name: productName.trim(),
+        description: productDescription.trim() || null,
+        price: parseFloat(productPrice.toString()) || 0,
+        in_stock: parseInt(productInStock.toString()) || 0,
+        category: categoryName || null,
       };
       const response = await fetch("/api/products", {
         method: "POST",
@@ -148,16 +153,21 @@ export default function Products() {
   const handleEditProduct = useCallback(async () => {
     if (!selectedProductId) return;
     try {
+      if (!productName.trim()) {
+        alert("Por favor, preencha o nome do produto.");
+        return;
+      }
+      
       // Encontrar o nome da categoria pelo ID
       const selectedCategory = categories.find(c => c.id.toString() === productCategory);
-      const categoryName = selectedCategory ? selectedCategory.name : productCategory;
+      const categoryName = selectedCategory ? selectedCategory.name : (productCategory || "");
       
       const updatedProduct = {
-        name: productName,
-        description: productDescription,
-        price: productPrice,
-        in_stock: productInStock,
-        category: categoryName,
+        name: productName.trim(),
+        description: productDescription.trim() || null,
+        price: parseFloat(productPrice.toString()) || 0,
+        in_stock: parseInt(productInStock.toString()) || 0,
+        category: categoryName || null,
       };
       const response = await fetch(`/api/products/${selectedProductId}`, {
         method: "PUT",
