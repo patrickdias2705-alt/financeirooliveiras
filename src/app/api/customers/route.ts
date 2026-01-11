@@ -12,7 +12,7 @@ export async function GET(request: Request) {
 
   const { data, error } = await supabase
     .from('customers')
-    .select('id, name, email, phone, status, created_at')
+    .select('id, name, email, phone, status, customer_category, created_at')
     .eq('user_uid', user.id)
     .order('created_at', { ascending: false })
 

@@ -61,6 +61,8 @@ type Order = {
   created_at: string;
   order_date?: string;
   notes?: string;
+  installments?: number;
+  installment_value?: number;
   customer: {
     name: string;
   };
@@ -324,6 +326,7 @@ export default function OrdersPage() {
                 <TableHead>ID do Pedido</TableHead>
                 <TableHead>Cliente</TableHead>
                 <TableHead>Total</TableHead>
+                <TableHead>Parcelas</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Data</TableHead>
                 <TableHead>Ações</TableHead>
@@ -335,6 +338,15 @@ export default function OrdersPage() {
                   <TableCell>{order.id}</TableCell>
                   <TableCell>{order.customer.name}</TableCell>
                   <TableCell>R$ {order.total_amount.toFixed(2)}</TableCell>
+                  <TableCell>
+                    {order.installments && order.installments > 1 ? (
+                      <span className="text-sm">
+                        {order.installments}x de R$ {order.installment_value?.toFixed(2) || (order.total_amount / order.installments).toFixed(2)}
+                      </span>
+                    ) : (
+                      "À vista"
+                    )}
+                  </TableCell>
                   <TableCell>{order.status === "completed" ? "Concluído" : order.status === "pending" ? "Pendente" : "Cancelado"}</TableCell>
                   <TableCell>{order.created_at}</TableCell>
                   <TableCell>

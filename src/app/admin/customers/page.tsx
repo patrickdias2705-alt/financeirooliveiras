@@ -57,7 +57,7 @@ type Customer = {
   phone: string;
   status: "active" | "inactive";
   last_order_date?: string;
-  customer_status?: "ativo" | "hibernando" | "novo";
+  customer_category?: "ativo" | "hibernando" | "novo";
 };
 
 type Order = {
@@ -99,6 +99,9 @@ export default function CustomersPage() {
   const [newCustomerStatus, setNewCustomerStatus] = useState<
     "active" | "inactive"
   >("active");
+  const [newCustomerCategory, setNewCustomerCategory] = useState<
+    "novo" | "ativo" | "hibernando"
+  >("novo");
   const [isEditCustomerDialogOpen, setIsEditCustomerDialogOpen] =
     useState(false);
   const [isDeleteConfirmationOpen, setIsDeleteConfirmationOpen] =
@@ -155,13 +158,13 @@ export default function CustomersPage() {
                 
                 // Hibernando apenas para quem não compra há 60+ dias
                 if (daysSince >= 60) {
-                  customer.customer_status = "hibernando";
+                  customer.customer_category = "hibernando";
                 } else {
-                  customer.customer_status = "ativo";
+                  customer.customer_category = "ativo";
                 }
               } else {
                 // Cliente novo (sem compras) começa como "novo"
-                customer.customer_status = "novo";
+                customer.customer_category = "novo";
               }
               return customer;
             });
@@ -171,7 +174,7 @@ export default function CustomersPage() {
             // Se não conseguir buscar pedidos, definir status padrão como "novo"
             setCustomers(data.map((c: Customer) => ({
               ...c,
-              customer_status: "novo" as const
+              customer_category: (c.customer_category || "novo") as "novo" | "ativo" | "hibernando"
             })));
           }
         } catch (error) {
@@ -229,6 +232,7 @@ export default function CustomersPage() {
     setNewCustomerEmail("");
     setNewCustomerPhone("");
     setNewCustomerStatus("active");
+    setNewCustomerCategory("novo");
   };
 
   const handleAddCustomer = useCallback(async () => {
@@ -243,6 +247,7 @@ export default function CustomersPage() {
         email: newCustomerEmail.trim(),
         phone: newCustomerPhone.trim() || null,
         status: newCustomerStatus,
+        customer_category: newCustomerCategory,
       };
       const response = await fetch("/api/customers", {
         method: "POST",
@@ -292,6 +297,7 @@ export default function CustomersPage() {
         email: newCustomerEmail.trim(),
         phone: newCustomerPhone.trim() || null,
         status: newCustomerStatus,
+        customer_category: newCustomerCategory,
       };
       const response = await fetch(`/api/customers/${selectedCustomerId}`, {
         method: "PUT",
@@ -451,11 +457,11 @@ export default function CustomersPage() {
             </TableHeader>
             <TableBody>
               {filteredCustomers.map((customer) => {
-                const statusColor = customer.customer_status === "ativo" 
+                const statusColor = customer.customer_category === "ativo" 
                   ? "bg-green-500/20 text-green-600 border-green-500/50" 
-                  : customer.customer_status === "hibernando"
+                  : customer.customer_category === "hibernando"
                   ? "bg-orange-500/20 text-orange-600 border-orange-500/50"
-                  : customer.customer_status === "novo"
+                  : customer.customer_category === "novo"
                   ? "bg-blue-500/20 text-blue-600 border-blue-500/50"
                   : "bg-gray-500/20 text-gray-600 border-gray-500/50";
                 
@@ -466,9 +472,9 @@ export default function CustomersPage() {
                   <TableCell>{customer.phone}</TableCell>
                     <TableCell>
                       <span className={`px-2 py-1 rounded text-xs font-medium border ${statusColor}`}>
-                        {customer.customer_status === "ativo" ? "Ativo" 
-                          : customer.customer_status === "hibernando" ? "Hibernando" 
-                          : customer.customer_status === "novo" ? "Novo"
+                        {customer.customer_category === "ativo" ? "Ativo" 
+                          : customer.customer_category === "hibernando" ? "Hibernando" 
+                          : customer.customer_category === "novo" ? "Novo"
                           : "Inativo"}
                       </span>
                     </TableCell>
@@ -502,6 +508,7 @@ export default function CustomersPage() {
                           setNewCustomerEmail(customer.email);
                           setNewCustomerPhone(customer.phone);
                           setNewCustomerStatus(customer.status);
+                          setNewCustomerCategory(customer.customer_category || "novo");
                           setIsEditCustomerDialogOpen(true);
                         }}
                       >
@@ -575,6 +582,22 @@ export default function CustomersPage() {
                 onChange={(e) => setNewCustomerPhone(e.target.value)}
                 className="col-span-3"
               />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="category">Categoria</Label>
+              <Select
+                value={newCustomerCategory}
+                onValueChange={(value: "novo" | "ativo" | "hibernando") => setNewCustomerCategory(value)}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="novo">Novo</SelectItem>
+                  <SelectItem value="ativo">Ativo</SelectItem>
+                  <SelectItem value="hibernando">Hibernando</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="status">Status</Label>

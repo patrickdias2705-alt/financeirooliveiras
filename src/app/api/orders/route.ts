@@ -22,6 +22,8 @@ export async function GET(request: Request) {
       created_at,
       order_date,
       notes,
+      installments,
+      installment_value,
       customer:customer_id (
         name
       )
